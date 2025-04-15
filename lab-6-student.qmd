@@ -2,6 +2,9 @@
 title: "Lab 6: Childcare Costs in California"
 author: "Catalina Dorado"
 date: "April 14, 2025"
+execute: 
+  message: false
+  warning: false
 ---
 
 ## The Data
@@ -15,18 +18,25 @@ The data come to us from [TidyTuesday](https://github.com/rfordatascience/tidytu
 
 ```{r}
 #| label: setup
-
+library(tidyverse)
+library(dplyr)
 ```
 
-```{r}
+```{r, message = FALSE}
 #| label: load-data
 
 childcare_costs <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/childcare_costs.csv')
 
 counties <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/counties.csv')
+
+childcare_costs
+counties
 ```
 
 **1. Briefly describe the dataset (~ 4 sentences). What information does it contain?**
+
+The first dataset, `childcare_costs`, contains numerical values representing various explanatory variables involved in childcare costs. Every variable has a data type as doubles. Each row is identified by their `county_fips_code`, which uniquely identifies the county in a state,  and `study_year`, which is the year the data collection is representative of. The unique identity of each county in a state can be referred to the `counties` dataset, where it contains the FIPS code of the state to which the county belongs to.
+
 
 ## California Childcare Costs
 
@@ -39,6 +49,19 @@ Let's start by focusing only on California.
 ```{r}
 #| label: ca-childcare-costs
 
+childcare <- childcare_costs %>%
+  mutate(county_fips_code = as.character(county_fips_code))
+
+ca_counties <- counties %>%
+  mutate(county_fips_code = as.character(county_fips_code)) 
+
+ca_childcare <- childcare %>%
+  left_join(ca_counties, by = "county_fips_code") %>% 
+  filter(state_name == "California")
+
+childcare
+ca_counties
+ca_childcare
 ```
 
 **3. Using a function from the `forcats` package, complete the code below to create a new variable where each county is categorized into one of the [10 Census regions](https://census.ca.gov/regions/) in California. Use the Region description (from the plot), not the Region number. An example region has been started for you.**  
@@ -47,13 +70,23 @@ Let's start by focusing only on California.
 
 ```{r}
 #| label: recoding-county-to-census-regions
+# Initial code eliminates the word “County” from each of the county names in the `ca_childcare` dataset. Keep and pipe into the rest of your data manipulations.
 
 ca_childcare <- ca_childcare |> 
   mutate(county_name = str_remove(county_name, " County")) |> 
-  mutate(region = fct_______(county_name,
-    'Superior California' = c("Butte", "Colusa", "El Dorado". ...),
-     ...
-    ))
+  mutate(region = fct_collapse(county_name, 
+                               'Superior California' = c("Butte", "Colusa", "El Dorado", "Glenn", "Lassen", "Modoc", "Nevada", "Placer", "Plumas", "Sacramento", "Shasta", "Sierra", "Siskiyou", "Sutter", "Tehama", "Yolo", "Yuba"), 
+                               'North Coast' = c("Del Norte", "Humboldt", "Lake", "Mendocino", "Napa", "Sonoma", "Trinity"), 
+                               'San Francisco Bay Area' = c("Alameda", "Contra Costa", "Marin", "San Francisco", "San Mateo", "Santa Clara", "Solano"), 
+                               'Northern San Joaquin Valley' = c("Alpine", "Amador", "Calaveras", "Madera", "Mariposa", "Merced", "Mono", "San Joaquin", "Stanislaus", "Tuolumne"), 
+                               'Central Coast' = c("Monterey", "San Benito", "San Luis Obispo", "Santa Barbara", "Santa Cruz", "Ventura"), 
+                               'Southern San Joaquin Valley' = c("Fresno", "Inyo", "Kern", "Kings", "Tulare"), 
+                               'Inland Empire' = c("Riverside", "San Bernardino"), 
+                               'Los Angeles County' = "Los Angeles", 
+                               'Orange County' = "Orange", 
+                               'San Diego - Imperial' = c("Imperial", "San Diego")))
+
+ca_childcare
 ```
 
 
@@ -63,7 +96,15 @@ ca_childcare <- ca_childcare |>
 #| label: median-income-by-region-over-time
 # Hint: You will want to calculate the median of median income before you make columns for 2008/2018 by transforming the data
 
-
+# Median household income code = `mhi_2018`
+ca_median_income <- ca_childcare |> 
+  select(region, study_year, mhi_2018) |> 
+  filter(study_year %in% c(2008, 2018)) |> 
+  group_by(region, study_year) |> 
+  summarise(mean_mhi = mean(mhi_2018)) |> 
+  pivot_wider(names_from = study_year, values_from = mean_mhi)
+  
+ca_median_income
 ```
 
 
