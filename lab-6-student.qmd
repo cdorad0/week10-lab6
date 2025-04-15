@@ -2,9 +2,13 @@
 title: "Lab 6: Childcare Costs in California"
 author: "Catalina Dorado"
 date: "April 14, 2025"
-execute: 
+format: gfm
+execute:
   message: false
   warning: false
+  embed-resources: true
+  code-tools: true
+  echo: true
 ---
 
 ## The Data
@@ -101,7 +105,7 @@ ca_median_income <- ca_childcare |>
   select(region, study_year, mhi_2018) |> 
   filter(study_year %in% c(2008, 2018)) |> 
   group_by(region, study_year) |> 
-  summarise(mean_mhi = mean(mhi_2018)) |> 
+  summarise(mean_mhi = mean(mhi_2018), .groups = "drop") |> 
   pivot_wider(names_from = study_year, values_from = mean_mhi)
   
 ca_median_income
@@ -115,15 +119,56 @@ ca_median_income
 ```{r}
 #| label: lowest-median-weekly-price-2018
 
+# Median weekly price for center-based childcare for infants = mc_infant
+ca_mc_infants <- ca_childcare |> 
+  select(region, study_year, mc_infant) |>
+  filter(study_year == "2018") |>
+  group_by(region, study_year) |> 
+  summarise(mean_mc_infant = mean(mc_infant), .groups = "drop") |> 
+  pivot_wider(names_from = study_year, values_from = mean_mc_infant) |> 
+  slice_min(`2018`, n = 1)
 
+ca_median_income |> 
+  slice_min(`2018`, n = 1)
+
+ca_mc_infants
 ```
+
+> The California region that had the lowest median full-time median weekly price for center-based childcare for infants in 2018 was Superior California (241,7306). This region does not correspond to the region with the lowest median household income in 2018 (Southern San Joaquin Valley, 51599.4).
+
 
 **6. Recreate the plot (look at online instructions) that shows, for all ten regions, the change over time of the full-time median price for center-based childcare for infants, toddlers, and preschoolers. Recreate the plot. You do not have to replicate the exact colors or theme, but your plot should have the same content, including the order of the facets and legend, reader-friendly labels, axes breaks, and a  smooth function.**
 
 
-```{r}
+```{r, message = FALSE, fig.width=12, fig.height=5} 
 #| label: recreate-plot
 
+# Data transformation 
+ca_mc_all <- ca_childcare |> 
+  select(study_year, region, mc_infant, mc_toddler, mc_preschool) |> 
+  pivot_longer(cols = starts_with("mc"), 
+               names_to = "Age_Group", 
+               values_to = "Median_Cost") |>
+  mutate(Age_Group = factor(Age_Group, levels = c("mc_infant", 
+                                                  "mc_toddler", 
+                                                  "mc_preschool")))
+
+# Graph
+ggplot(ca_mc_all, aes(x = study_year, y = Median_Cost, color = factor(region))) + 
+  geom_point() + 
+  geom_smooth() + 
+  facet_wrap(~ Age_Group, labeller = labeller(Age_Group = c(mc_infant = "Infant", 
+                                                            mc_toddler = "Toddler", 
+                                                            mc_preschool = "Preschool"))) + 
+  labs(title = "Weekly Median Price for Center-Based Childcare ($)", 
+       x = "Study Year", 
+       y = NULL, 
+       color = "California Region") + 
+  scale_x_continuous(breaks = c(2008, 2010, 2012, 2014, 2016, 2018)) + 
+  scale_y_continuous(limits = c(100, 500)) + 
+  theme_bw() 
+
+ca_mc_all
 ```
 
 
