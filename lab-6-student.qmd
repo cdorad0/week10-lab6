@@ -2,7 +2,9 @@
 title: "Lab 6: Childcare Costs in California"
 author: "Catalina Dorado"
 date: "April 14, 2025"
-format: gfm
+format:
+  html: default
+  gfm: default
 execute:
   message: false
   warning: false
